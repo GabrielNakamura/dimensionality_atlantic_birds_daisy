@@ -19,6 +19,7 @@ rm(ipak,packages)
 # Directory ---------------------------------------------------------------
 
 setwd("G:/Meu Drive/master's article")
+taxon <- here::here("data", "ATLANTIC_BIRDS_qualitative.csv")
 
 # Taxonomic Clean (150, 423)---------------------------------------------------------
 taxon = read.csv("ATLANTIC_BIRDS_qualitative.csv", fileEncoding = "latin1", sep = ";")
