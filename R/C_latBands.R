@@ -1,74 +1,49 @@
 
+# reading libraries -------------------------------------------------------
+
+library(dplyr)
+library(magrittr)
+library(reshape2)
+library(reshape)
+library(purrr)
+library(raster)
+library(terra)
+
+# reading data ------------------------------------------------------------
+
 name_files <- paste("ras_", c("fdi", "fev", "mpd", "pd", "pdfunc", "riq", "vpd"), ".rds", sep = "")
 list_files <- vector(mode = "list", length = length(name_files))
 list_m <- vector(mode = "list", length = length(name_files))
 list_data <- lapply(name_files, function(x) readRDS(file = here::here("data", "processed", x)))
 
-lapply(list_data, function(x) dim(x))
-head(list_data[[5]])
-head(list_data[[2]])
-
-# minimmum extent
-do.call(rbind, lapply(list_data, function(x){
-  dfs_extent <- raster::extent(x) 
-  lat_limits <- dfs_extent[c(3, 4)]
-  # long_limits <- dfs_extent[c(1,2)]
-}))
-
-for(i in 1:length(name_files)){
-  # i = 3
-  df <- readRDS(file = here::here("data", "processed", name_files[i]))
-  dfs <- raster::rasterFromXYZ(df)
-  dfs_extent <- raster::extent(dfs) 
-  lat_limits <- dfs_extent[c(3, 4)]
-  lat_limits[2] <- -5.25
-  long_limits <- dfs_extent[c(1,2)]
-  band <- seq(lat_limits[1], lat_limits[2], by = 0.5)
-  band_data <- 
-  lapply(1:(length(band) - 1), function(i){
-   x <-  raster::crop(dfs, raster::extent(c(long_limits, band[i], band[i + 1])))
-   x <- raster::as.data.frame(x)
-   #x <-  na.omit(raster::as.data.frame(x))
-   return(x)
-  })
-  list_m[[i]] <- band_data
+list_data_names <- vector(mode = "list", length = length(list_data))
+for(i in 1:length(list_data)){
+  names <- rownames(list_data[[i]])
+  list_data_names[[i]] <- data.frame(list_data[[i]], ID = names)
 }
 
-do.call(rbind, lapply(list_m, function(x){
-  x[1]
-})
-)
-unlist(lapply(list_m, function(x){
-  x[2]
-})
-)
 
-for(i in 1:length(list_m[[1]])){
-  # i = 3
-  do.call(cbind, lapply(list_m, function(x) do.call(data.frame, x[[3]])))
-}
-list_m2 <- vector(mode = "list", length = 7)
-for(i in 1:length(list_m)){
-  #i = 1
-  for(j in 1:7)
-  lapply(list_m, `[[`, i)[[j]]
-}
-lapply(list_m, `[[`, 1)
-length(list_m[[1]][1])
-lapply(list_m, function(x){
-  x[[1]][[1]]
-})
-for(i in 1:length(list_m)){
-  lapply(list_m, function(x){
-    x[]
-  })
-}
+# joining all lists -------------------------------------------------------
 
-lapply(list_m, function(x){
-  x[1]
-})
+m <-   
+list_data_names %>% 
+  reduce(inner_join, by = "ID")
 
-for(i in 1:7){
-  i = 1
-  list_m[[i]][[45]]
-}
+# croping to remove duplicated coordinates
+m_crop <- m[, colnames(m)[c(4, 1, 2, 3, 7, 10, 13, 16, 19, 22)]]
+
+# renaming 
+colnames(m_crop) <- c("ID", "x", "y", "ras_FDi", "ras_FEv", "ras_mpd", "ras_pd", "ras_pdfunc", "RIQUEZA", "ras_vpd")
+m_crop_coords <- m_crop[, c("x", "y", "ID", colnames(m_crop)[4:ncol(m_crop)])]
+
+
+# getting latitudinal bands -----------------------------------------------
+
+dfs_extent <- raster::extent(m_crop[, c(2, 3)]) 
+lat_limits <- dfs_extent[c(3, 4)]
+long_limits <- dfs_extent[c(1,2)]
+band <- seq(lat_limits[1], lat_limits[2], by = 0.5)
+
+# cropping latitudinal bands
+comm_bands <- lapply(band, function(i) subset(m_crop, y >= i & y <=  i + 1))
+
